@@ -6,16 +6,19 @@ danger : AIS OFF and ALL ON
 """
 import MySQLdb
 import private.secret as sc
+from modules.hardware import Hardware
 db = MySQLdb.connect(host=sc.HOST,user=sc.USER,password=sc.PASSWORD,database=sc.DB)
 
 cur = db.cursor()
 def controler(status):
     if status == 'safe': # 0단계 동작 코드
-        print(status)
+        hd.speaker_contorl('off')
+        hd.EB_control('off')
     elif status == 'warring': # 1단계 동작 코드
-        print(status)
+        pass
     elif status == 'danger': # 2단계 동작 코드
-        print(status)
+        hd.speaker_contorl('on')
+        hd.EB_control('on')
     elif status == -1: # 수동 제어
         query = f"select ais,ssas,speaker,eb from moduleprocessing_shipinfo where shipname='happy'"
         cur.execute(query)
@@ -33,12 +36,11 @@ def controler(status):
                 pass
             # 2 : speaker
             if row[2] == 1: # 동작
-                pass
+                hd.speaker_contorl('on')
             else: # 멈춤
-                pass
+                hd.speaker_contorl('off')
             # 3 : eb
             if row[3] == 1: # 동작
-                pass
+                hd.EB_control('on')
             else: # 멈춤
-                pass
-        print(end='\n\n')
+                hd.EB_control('off')
