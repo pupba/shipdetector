@@ -34,10 +34,10 @@ class ShipDetector:
         height, width, _ = self.__img.shape
         
         results = self.__model(self.__img)
-        self.makeBBox(results,ais)
+        self.makeBBox(results,ais,distance)
 
     # 식별된 선박을 트래킹하면서 바운딩 박스 그리는 메서드
-    def makeBBox(self,results:pd.DataFrame,ais:dict)->None:
+    def makeBBox(self,results:pd.DataFrame,ais:dict,distance:dict)->None:
         obj_idx = None
         color = (0,0,0)
         for resultDF in results.pandas().xyxy:
@@ -58,14 +58,16 @@ class ShipDetector:
                         location = 'right'
                     elif 640 <= check <= 1279:
                         location = 'left'
-                    data = []
+                    dist = 999
                     # test
-                    if location == 'right':
-                        data = [1,2,3,4,5,6]
+                    if distance == {}:
+                        pass
+                    elif location == 'right':
+                        dist = min(distance['r'])
                     else:
-                        data = [8,9,10,11,12]
+                        dist = min(distance['l'])
                     # 위험 상태 판별
-                    status = decision(ais,location,data)
+                    status = decision(ais,location,dist)
                     # 식별된 선박의 바운딩 박스 정보, 식별 위치를 튜플로 저장
                     if obj_idx not in self.__shipList:
                         self.__shipList[obj_idx] = (obj_box,location)
