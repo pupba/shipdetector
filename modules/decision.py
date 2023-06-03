@@ -11,25 +11,20 @@ import math
 import pandas as pd
 import requests
 import json
-import MySQLdb
+import pymysql
 import private.secret as sc
-db = MySQLdb.connect(host=sc.HOST,user=sc.USER,password=sc.PASSWORD,database=sc.DB)
+db = pymysql.connect(host=sc.HOST,user=sc.USER,password=sc.PASSWORD,database=sc.DB)
 
 cur = db.cursor()
 
 # 위/경도로 표시된 두 지점 간의 거리를 계산(Haversine 공식 사용)
 def haversine_dist(lat1, lon1, lat2, lon2):
     R = 6371  # 지구의 반경 (단위: km)
-    print(lat1, lon1, lat2, lon2)
     dlat = math.radians(lat2 - lat1)
-    print(f'dlat : {dlat}')
     dlon = math.radians(lon2 - lon1)
-    print(f'dlon : {dlon}')
     a = math.sin(dlat / 2) * math.sin(dlat / 2) + math.cos(math.radians(lat1)) * \
         math.cos(math.radians(lat2)) * math.sin(dlon / 2) * math.sin(dlon / 2)
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-    print(f'a : {a}')
-    print(f'c : {c}')
     distance = R * c
     return distance
 
@@ -61,10 +56,10 @@ def tcpa(myaisData:dict,aisData:dict)->bool:
     # 6분 이내
     print(result)
     if result < 6 or result == None:
-        return False
+        return (False,result)
     # 6분 초과
     else:
-        return True
+        return (True,result)
 
 # 거리 측정
 def distance(sensorData)->bool:
@@ -78,8 +73,8 @@ def distance(sensorData)->bool:
 
 myaisData = pd.read_csv('./ais20171001_top5/ais_top4_mmsi440311690.csv',index_col = 0)
 # 선박 위험 상태 판별
-def decision(ais:dict,location:str,sensorData:list)->dict:
-    status = {'status':''}
+def decision(ais:dict,location:str,dist:float)->dict:
+    status = {'status':'','distance':dist, 'TCPA':0}
     # AIS 확인
     if len(ais) != 0:
         status['status'] = 'safe'
@@ -97,6 +92,8 @@ def decision(ais:dict,location:str,sensorData:list)->dict:
                      'Longitude':target_data['Longitude'],'SOG':target_data['SOG'],
                      'COG':target_data['COG'],'HDG':target_data['HDG']}
             # TCPA
+            tcpav = tcpa(myais,ais)
+            status['TCPA'] = tcpav[1]
             if tcpa(myais,ais):
                 pass # 안전
             else: # 6분 이내
@@ -110,7 +107,7 @@ def decision(ais:dict,location:str,sensorData:list)->dict:
     else :
         status['status'] = 'warring'
         # 위험 거리
-        if distance(min(sensorData)):
+        if distance(dist):
             pass
         else: # 가까이옴
             status['status'] = 'danger'
