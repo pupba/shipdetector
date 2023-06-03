@@ -11,11 +11,13 @@ camera.set(cv2.CAP_PROP_FRAME_WIDTH,1280)
 camera.set(cv2.CAP_PROP_FRAME_HEIGHT,720)
 sd = ShipDetector()
 data = {}
+msg = {}
+distance = {}
 def gen_frames():  # generate frame by frame from camera
     while True: 
         ret,frame = camera.read()
         if not ret : break
-        sd.detect(frame,data)
+        sd.detect(frame,data,distance)
         
         ret, buffer = cv2.imencode('.jpg', frame)
         frame = buffer.tobytes()
@@ -35,45 +37,26 @@ def recv():
         data = json.loads(request.get_json())
     return 'Success'
 
-from io import BytesIO
+@camserver.route('/locate',methods=['POST'])
+def recvLocation():
+    global distance
+    if request.method == 'POST':
+        distance = json.loads(request.get_json())
+    return 'Success'
+
 import matplotlib.pyplot as plt
-# 애니메이션을 생성하는 함수
-def generate_animation():
-    fig, ax = plt.subplots()
-
-    # 애니메이션 프레임을 생성하는 함수
-    def animate(frame):
-        ax.clear()
-        ax.plot([1, 2, 3, 4], [frame, frame, frame, frame])  # 예시: 간단한 그래프
-
-    # 애니메이션 프레임을 바이트 스트림으로 변환
-    def generate_frames():
-        a = 0
-        while True :
-            # 레이더
-            animate(a%10)
-            a+=1
-            # 그래프를 이미지로 변환
-            buffer = BytesIO()
-            plt.savefig(buffer, format='png')
-            buffer.seek(0)
-            frame_bytes = buffer.getvalue()
-
-            yield (b'--frame\r\n'
-                   b'Content-Type: image/png\r\n\r\n' + frame_bytes + b'\r\n')
-
-    # 애니메이션 프레임을 스트리밍하는 Response 객체 반환
-    return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+from modules.lidar import Lidar
+ld = Lidar()
 
 @camserver.route('/ladar')
 def ladar():
-    return generate_animation()
+    return Response(ld.run_lidar(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 from modules.control import controler
 @camserver.route('/control',methods=['POST'])
 def antiTerrorControl():
     if request.method == 'POST':
-        data = json.loads(request.get_json())
+        msg = json.loads(request.get_json())
         controler(data['status'])
     return 'Success'
 
