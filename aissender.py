@@ -25,7 +25,7 @@ def bicon():
     n = itertools.cycle(range(len(l))) 
     while True:   
         if send(AISDATA.loc[l[next(n)]]):
-            time.sleep(1)
+            time.sleep(5)
         else:
             print("Error")
             break
